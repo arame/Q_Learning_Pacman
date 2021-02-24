@@ -28,13 +28,13 @@ class Q_learn:
         q_old = self.Q_table[old_state, old_index, old_action]
         q_max = self.calcMaxQ()
         q_new = q_old + alpha * (reward + gamma * q_max - q_old)
-        self.set_q_value(state, action, q_val, is_breadcrumb)
+        self.set_q_value(new_state, new_action, q_new, is_breadcrumb)
 
     def calcMaxQ(self):
         q_max = 0
         for s in range(self.no_cells):
             for a in range(self.no_actions):
-                q_val = get_q_value(self, s, a)
+                q_val = self.get_q_value(s, a)
                 if q_max < q_val:
                     q_max = q_val
         return q_max
