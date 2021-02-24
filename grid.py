@@ -6,7 +6,7 @@ from constants import Constants
 
 class Pacman_grid:
     def __init__(self):
-        self.time_step = 0
+        self.no_cells = Hyper.N * Hyper.N
         self.setup_display_dict()
         self.setup_env()
         self.setup_reward_dict()
@@ -22,7 +22,7 @@ class Pacman_grid:
         self.env[0, :] = self.env[-1, :] = self.env[:, 0] = self.env[:, -1] = Constants.OBSTACLE
         
         # Start cell in the middle
-        start_cell_id = int((Hyper.N * Hyper.N - 1) / 2)     # N must be an odd number
+        start_cell_id = int((self.no_cells - 1) / 2)     # N must be an odd number
         i, j = self.state_position_dict[start_cell_id]
         self.env[i, j] = Constants.START
 
@@ -35,7 +35,8 @@ class Pacman_grid:
         no_breadcrumbs = (Hyper.N - 2) * 2
         empty_coord = self.get_empty_cells(no_breadcrumbs)
         self.env[empty_coord[0], empty_coord[1]] = Constants.BREADCRUMB
-        self.print_grid()
+        self.orig_env = np.copy(self.env)
+        self.print_grid("Initial Environment")
         
     def get_empty_cells(self, n_cells):
         empty_cells_coord = np.where( self.env == Constants.EMPTY)
@@ -74,10 +75,9 @@ class Pacman_grid:
         # We need a dictionary of indexes for each cell. This defaults to zero for each cell.
         # And where a breadcrumb changes to empty, the index for that cell changes from 0 to 1.
         # The breadcrumb to empty change is the only scenario where this happens.
-        self.q_indexes = {i:0 for i in range(Hyper.N * Hyper.N)}
+        self.q_indexes = {i:0 for i in range(self.no_cells)}
         no_actions = len(self.index_to_actions)
-        no_cells = Hyper.N * Hyper.N
-        self.q_table = np.zeros((no_cells, 2, no_actions), dtype=np.int8)
+        self.q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.int8)
 
     def setup_display_dict(self):
         self.dict_map_display={ Constants.EMPTY: Constants.EMPTY_X,
@@ -85,9 +85,9 @@ class Pacman_grid:
                                 Constants.OBSTACLE: Constants.OBSTACLE_X,
                                 Constants.START: Constants.START_X}
 
-    def print_grid(self):
+    def print_grid(self, caption):
         # Use characters rather than integers to make it easier to interpret the grid
-        print("Environment")
+        print(caption)
         for i in range(Hyper.N):
             line = ''
             for j in range(Hyper.N):
@@ -95,10 +95,21 @@ class Pacman_grid:
                 line += self.dict_map_display[state_id] + " "
             print(line)
 
+    def print_episode_results(self, episodes):
+        print(f"For episode {episodes}, which {self.result} after {self.time_step} steps")
+        caption = "Completed environment"
+        self.print_grid(caption)
+
     def reset(self):
         # By setting all the q indexes to zero, the q table will be set to
         # point to all the breadcrumbs as originally set
-        self.q_indexes = {i:0 for i in range(Hyper.N * Hyper.N)}
+        self.q_indexes = {i:0 for i in range(self.no_cells)}
+        # set the grid to how it was before
+        self.env = np.copy(self.orig_env)
+        self.time_step = 0
+        self.result = ""
 
     def step(self):
+        # Q Learning algorithm code takes place here
+        self.time_step += 1
         return True
