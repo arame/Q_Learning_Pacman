@@ -3,6 +3,7 @@ from policy import Policy
 from collections import namedtuple
 from hyper import Hyper
 from constants import Constants
+from q_learn import Q_learn
 
 class Pacman_grid:
     def __init__(self):
@@ -11,7 +12,8 @@ class Pacman_grid:
         self.setup_env()
         self.setup_reward_dict()
         self.setup_action_dict()
-        self.setup_q_table()
+        self.Q = Q_learn(self.no_cells, self.no_actions)
+        self.policy = Policy()
 
     def setup_env(self):
         self.state_position_dict = {(i * Hyper.N + j):(i, j) for i in range(Hyper.N) for j in range(Hyper.N)}
@@ -67,17 +69,7 @@ class Pacman_grid:
             self.index_to_actions[action.index] = action
 
         self.actions_to_index = {v: k for k, v in self.index_to_actions.items()}
-
-    def setup_q_table(self):
-        # The state is a combination of cell id and whether it is empty, a breadcrumb or an obstacle.
-        # The state of a cell can change from breadcrumb to empty for the same cell id
-        # As a result our q table will exist in 3 dimensions; state x state x actions
-        # We need a dictionary of indexes for each cell. This defaults to zero for each cell.
-        # And where a breadcrumb changes to empty, the index for that cell changes from 0 to 1.
-        # The breadcrumb to empty change is the only scenario where this happens.
-        self.q_indexes = {i:0 for i in range(self.no_cells)}
-        no_actions = len(self.index_to_actions)
-        self.q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.int8)
+        self.no_actions = len(self.index_to_actions)
 
     def setup_display_dict(self):
         self.dict_map_display={ Constants.EMPTY: Constants.EMPTY_X,
@@ -101,9 +93,7 @@ class Pacman_grid:
         self.print_grid(caption)
 
     def reset(self):
-        # By setting all the q indexes to zero, the q table will be set to
-        # point to all the breadcrumbs as originally set
-        self.q_indexes = {i:0 for i in range(self.no_cells)}
+        self.Q.reset()
         # set the grid to how it was before
         self.env = np.copy(self.orig_env)
         self.time_step = 0
@@ -112,4 +102,5 @@ class Pacman_grid:
     def step(self):
         # Q Learning algorithm code takes place here
         self.time_step += 1
+        #self.policy.get()
         return True
