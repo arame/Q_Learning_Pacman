@@ -12,7 +12,7 @@ class Pacman_grid:
         self.setup_env()
         self.setup_reward_dict()
         self.setup_action_dict()
-        self.Q = Q_learn(self.no_cells, self.no_actions)
+        self.Q = Q_learn(self.no_actions)
         self.policy = Policy()
 
     def setup_env(self):

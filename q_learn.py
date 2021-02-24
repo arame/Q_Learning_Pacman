@@ -1,8 +1,9 @@
 import numpy as np
 from hyper import Hyper
+from constants import Constants
 
 class Q_learn:
-    def __init__(self, no_cells, no_actions):
+    def __init__(self, no_actions):
         # The state is a combination of cell id and whether it is empty, a breadcrumb or an obstacle.
         # The state of a cell can change from breadcrumb to empty for the same cell id
         # As a result our q table will exist in 3 dimensions; 
@@ -11,35 +12,29 @@ class Q_learn:
         # And where a cell with a breadcrumb changes to empty, 
         # the index for that cell changes from 0 to 1.
         # The breadcrumb to empty change is the only scenario where this happens.
-        self.no_cells = no_cells
+        self.no_cells = Hyper.N * Hyper.N
         self.no_actions = no_actions
         self.q_indexes = {i:0 for i in range(self.no_cells)}
         self.Q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.int8)
+        self.state_position_dict = {(i * Hyper.N + j):(i, j) for i in range(Hyper.N) for j in range(Hyper.N)}
+        self.position_state_dict = {v: k for k, v in self.state_position_dict.items()}
 
     def reset(self):
         # By setting all the q indexes to zero, the q table will be set to
         # point to all the breadcrumbs as originally set
         self.q_indexes = {i:0 for i in range(self.no_cells)}
 
-    def update(self, new_state, new_action, old_state, old_action, reward, is_breadcrumb):
+    def update(self, old_state, old_action, new_state, new_action, reward, is_breadcrumb):
         alpha = Hyper.alpha
         gamma = Hyper.gamma
-        old_index = self.q_indexes[old_state]
-        q_old = self.Q_table[old_state, old_index, old_action]
-        q_max = self.calcMaxQ()
+        q_old = self.get_q_value(old_state, old_action)
+        new_index = self.q_indexes[new_state]
+        q_max = np.max(self.Q_table[new_state, new_index, :])
         q_new = q_old + alpha * (reward + gamma * q_max - q_old)
         self.set_q_value(new_state, new_action, q_new, is_breadcrumb)
 
-    def calcMaxQ(self):
-        q_max = 0
-        for s in range(self.no_cells):
-            for a in range(self.no_actions):
-                q_val = self.get_q_value(s, a)
-                if q_max < q_val:
-                    q_max = q_val
-        return q_max
-
-    # Get and set q values in the table, making sure the 
+    # Get and set q values in the table, making sure the q_indexes dictionary is referenced
+    # before accessing or changing the Q table
     def get_q_value(self, state, action):
         index = self.q_indexes[state]
         return self.Q_table[state, index, action]
@@ -50,4 +45,9 @@ class Q_learn:
         if is_breadcrumb:
             # When the Pacman leaves the breadcrumb cell, it will change state and become empty
             self.q_indexes[state] = 1  
-
+        print("Updated Q Table")
+        print("---------------")
+        for i in range(self.no_cells):
+            print(i, "0  |", self.Q_table[i, 0, :])
+            print(i, "1  |", self.Q_table[i, 1, :])
+            print("---------------")
