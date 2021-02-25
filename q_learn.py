@@ -16,8 +16,6 @@ class Q_learn:
         self.no_actions = no_actions
         self.q_indexes = {i:0 for i in range(self.no_cells)}
         self.Q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.int8)
-        self.state_position_dict = {(i * Hyper.N + j):(i, j) for i in range(Hyper.N) for j in range(Hyper.N)}
-        self.position_state_dict = {v: k for k, v in self.state_position_dict.items()}
 
     def reset(self):
         # By setting all the q indexes to zero, the q table will be set to

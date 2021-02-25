@@ -3,11 +3,12 @@ class Constants:
     BREADCRUMB = 1
     OBSTACLE = 2
     START = 3
+    AGENT = 9
     EMPTY_X = "."
     BREADCRUMB_X = "b"
     OBSTACLE_X = "X"
     START_X = "S"
-    AGENT = "A"
+    AGENT_X = "A"
     EMPTY_REWARD = -1
     BREADCRUMB_REWARD = 10
     OBSTACLE_REWARD = -100

@@ -33,8 +33,8 @@ class Pacman_grid:
         self.env[empty_coord[0], empty_coord[1]] = Constants.OBSTACLE
 
         # Replace empty cells with breadcrumbs. 
-        no_breadcrumbs = (Hyper.N - 2) * 2
-        empty_coord = self.get_empty_cells(no_breadcrumbs)
+        self.no_breadcrumbs = (Hyper.N - 2) * 2
+        empty_coord = self.get_empty_cells(self.no_breadcrumbs)
         self.env[empty_coord[0], empty_coord[1]] = Constants.BREADCRUMB
         self.orig_env = np.copy(self.env)
         self.print_grid("Initial Environment")
@@ -80,7 +80,8 @@ class Pacman_grid:
         self.dict_map_display={ Constants.EMPTY: Constants.EMPTY_X,
                                 Constants.BREADCRUMB: Constants.BREADCRUMB_X,
                                 Constants.OBSTACLE: Constants.OBSTACLE_X,
-                                Constants.START: Constants.START_X}
+                                Constants.START: Constants.START_X,
+                                Constants.AGENT: Constants.AGENT_X}
 
     def print_grid(self, caption):
         # Use characters rather than integers to make it easier to interpret the grid
@@ -102,12 +103,14 @@ class Pacman_grid:
         # set the grid to how it was before
         self.env = np.copy(self.orig_env)
         # put agent in the start cell of the environment
-        start_state, i, j = self.get_start_cell_coords()
+        start_cell_id, i, j = self.get_start_cell_coords()
         self.env[i, j] = Constants.AGENT
-        self.agent_cell_id = start_state
+        self.agent_cell_id = start_cell_id
         self.time_step = 0
         self.result = ""
         self.is_breadcrumb = False
+        self.done = False
+        self.breadcrumb_cnt = 0
 
     def step(self):
         # Q Learning algorithm code takes place here
@@ -115,20 +118,26 @@ class Pacman_grid:
         new_cell_id = self.agent_step(action)
         reward = self.get_reward(new_cell_id)
         self.Q.update(self.agent_cell_id, new_cell_id, action, reward, self.is_breadcrumb)
-        self.move_agent(new_cell_id, action)
+        self.move_agent(new_cell_id)
         self.time_step += 1
-        return True
+        self.print_grid(f"Next Step {self.time_step}: {self.index_to_actions[action].name}")
+        if self.is_breadcrumb:
+            self.breadcrumb_cnt += 1
+            self.done = self.breadcrumb_cnt == self.no_breadcrumbs
+
+        return self.done
 
     def get_reward(self, cell_id):
-        state = self.env[cell_id]
+        i, j = self.state_position_dict[cell_id]
+        state = self.env[i, j]
         self.is_breadcrumb = state == Constants.BREADCRUMB
         reward = self.reward_dict[state]
         return reward
 
-    def move_agent(self, new_cell_id, action):
+    def move_agent(self, new_cell_id):
         # check if the new cell location is on an obstacle
         # if it is, do not change the environment or move the agent
-        i, j = self.state_position_dict[self.agent_cell_id]
+        i, j = self.state_position_dict[new_cell_id]
         if self.env[i, j] == Constants.OBSTACLE:
             return
         # When an agent moves from a cell, that cell will be empty
@@ -139,24 +148,13 @@ class Pacman_grid:
         self.agent_cell_id = new_cell_id
         i, j = self.state_position_dict[self.agent_cell_id]
         self.env[i, j] = Constants.AGENT
-        self.print_grid(f"Next Step {action}")
 
     def agent_step(self, action):
         # to move the agent, get the coordinates of the current cell
         # change one of the coordinates, and return the cell_id of the new cell
         i, j = self.state_position_dict[self.agent_cell_id]
-        if action == Constants.UP:
-            new_state = self.position_state_dict[i - 1, j]
-            return new_state
-
-        if action == Constants.DOWN:
-            new_state = self.position_state_dict[i + 1, j]
-            return new_state
-
-        if action == Constants.LEFT:
-            new_state = self.position_state_dict[i, j - 1]
-            return new_state
-
-        if action == Constants.RIGHT:
-            new_state = self.position_state_dict[i, j + 1]
-            return new_state
+        _action = self.index_to_actions[action]
+        i += _action.delta_i
+        j += _action.delta_j
+        new_cell_id = self.position_state_dict[i, j]
+        return new_cell_id
