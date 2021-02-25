@@ -121,7 +121,7 @@ class Pacman_grid:
 
     def get_reward(self, cell_id):
         state = self.env[cell_id]
-        self.is_breadcrumb = state == Constants.BREADCRUMB:
+        self.is_breadcrumb = state == Constants.BREADCRUMB
         reward = self.reward_dict[state]
         return reward
 
