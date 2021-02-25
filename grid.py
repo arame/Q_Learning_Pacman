@@ -112,10 +112,10 @@ class Pacman_grid:
     def step(self):
         # Q Learning algorithm code takes place here
         self.time_step += 1
-        new_action = self.policy.get(self.agent_state, self.Q)
-        new_state = self.agent_step(new_action)
+        action = self.policy.get(self.agent_state, self.Q)
+        new_state = self.agent_step(action)
         reward = self.get_reward(new_state)
-        self.Q.update(self.agent_state, new_state, new_action, self.is_breadcrumb)
+        self.Q.update(self.agent_state, new_state, action, reward, self.is_breadcrumb)
         self.agent_state = new_state
         return True
 
