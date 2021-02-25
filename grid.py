@@ -104,19 +104,19 @@ class Pacman_grid:
         # put agent in the start cell of the environment
         start_state, i, j = self.get_start_cell_coords()
         self.env[i, j] = Constants.AGENT
-        self.agent_state = start_state
+        self.agent_cell_id = start_state
         self.time_step = 0
         self.result = ""
         self.is_breadcrumb = False
 
     def step(self):
         # Q Learning algorithm code takes place here
+        action = self.policy.get(self.agent_cell_id, self.Q)
+        new_cell_id = self.agent_step(action)
+        reward = self.get_reward(new_cell_id)
+        self.Q.update(self.agent_cell_id, new_cell_id, action, reward, self.is_breadcrumb)
+        self.move_agent(new_cell_id)
         self.time_step += 1
-        action = self.policy.get(self.agent_state, self.Q)
-        new_state = self.agent_step(action)
-        reward = self.get_reward(new_state)
-        self.Q.update(self.agent_state, new_state, action, reward, self.is_breadcrumb)
-        self.agent_state = new_state
         return True
 
     def get_reward(self, cell_id):
@@ -125,23 +125,38 @@ class Pacman_grid:
         reward = self.reward_dict[state]
         return reward
 
+    def move_agent(self, new_cell_id):
+        # check if the new cell location is on an obstacle
+        # if it is, do not change the environment or move the agent
+        i, j = self.state_position_dict[self.agent_cell_id]
+        if self.env[i, j] == Constants.OBSTACLE:
+            return
+        # When an agent moves from a cell, that cell will be empty
+        # This will overwrite the previous state,
+        # which might be Start, breadcrumb or empty
+        i, j = self.state_position_dict[self.agent_cell_id]
+        self.env[i, j] = Constants.EMPTY
+        self.agent_cell_id = new_cell_id
+        i, j = self.state_position_dict[self.agent_cell_id]
+        self.env[i, j] = Constants.AGENT
+        self.print_grid()
+
     def agent_step(self, action):
+        # to move the agent, get the coordinates of the current cell
+        # change one of the coordinates, and return the cell_id of the new cell
+        i, j = self.state_position_dict[self.agent_cell_id]
         if action == Constants.UP:
-            i, j = self.state_position_dict[self.agent_state]
             new_state = self.position_state_dict[i - 1, j]
             return new_state
 
         if action == Constants.DOWN:
-            i, j = self.state_position_dict[self.agent_state]
             new_state = self.position_state_dict[i + 1, j]
             return new_state
 
         if action == Constants.LEFT:
-            i, j = self.state_position_dict[self.agent_state]
             new_state = self.position_state_dict[i, j - 1]
             return new_state
 
         if action == Constants.RIGHT:
-            i, j = self.state_position_dict[self.agent_state]
             new_state = self.position_state_dict[i, j + 1]
             return new_state

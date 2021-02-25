@@ -1,6 +1,7 @@
 
 class Hyper:
-    total_episodes = 50
+    #total_episodes = 50
+    total_episodes = 1
     N = 7
     gamma = 0.9
     init_epsilon = 0.999
