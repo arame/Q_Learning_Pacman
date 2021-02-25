@@ -22,5 +22,6 @@ class Policy():
     def update_epsilon(self):
         # called for each episode
         self.epsilon *= Hyper.decay
+        print(f"Epsilon: {self.epsilon}")
         return self.epsilon
         

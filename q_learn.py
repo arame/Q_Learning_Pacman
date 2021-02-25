@@ -44,10 +44,10 @@ class Q_learn:
             self.q_indexes[state] = 1  
         print("Updated Q Table")
         print("---------------")
-        for i in range(self.no_cells):
+        """ for i in range(self.no_cells):
             print(i, "0  |", self.Q_table[i, 0, :])
             print(i, "1  |", self.Q_table[i, 1, :])
-            print("---------------")
+            print("---------------") """
 
     def get_max_q(self, state):
         index = self.q_indexes[state]
@@ -56,5 +56,8 @@ class Q_learn:
 
     def get_action_for_max_q(self, state):
         q_max, index = self.get_max_q(state)
-        action = self.Q_table[state, index, :].index(q_max)
-        return action
+        actions = self.Q_table[state, index, :]
+        for i in range(len(actions)):
+            if actions[i] == q_max:
+                return actions[i]
+        return actions[0]

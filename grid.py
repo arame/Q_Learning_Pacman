@@ -29,16 +29,23 @@ class Pacman_grid:
 
         # Replace empty cells with obstacles. 
         no_obstacles = Hyper.N - 2
-        empty_coord = self.get_empty_cells(no_obstacles)
-        self.env[empty_coord[0], empty_coord[1]] = Constants.OBSTACLE
+        self.populate_env_with_state(Constants.OBSTACLE, no_obstacles)
 
         # Replace empty cells with breadcrumbs. 
         self.no_breadcrumbs = (Hyper.N - 2) * 2
-        empty_coord = self.get_empty_cells(self.no_breadcrumbs)
-        self.env[empty_coord[0], empty_coord[1]] = Constants.BREADCRUMB
+        self.populate_env_with_state(Constants.BREADCRUMB, self.no_breadcrumbs)
         self.orig_env = np.copy(self.env)
         self.print_grid("Initial Environment")
-        
+
+    def populate_env_with_state(self, state, limit):
+        # This method is needed as sometimes the empty cells returned have duplicates
+        count = 0
+        while count < limit:
+            no_cells = limit - count
+            empty_coord = self.get_empty_cells(no_cells)
+            self.env[empty_coord[0], empty_coord[1]] = state
+            count = np.count_nonzero(self.env == state)
+
     def get_empty_cells(self, n_cells):
         empty_cells_coord = np.where( self.env == Constants.EMPTY)
         selected_indices = np.random.choice( np.arange(len(empty_cells_coord[0])), n_cells )
@@ -115,6 +122,7 @@ class Pacman_grid:
     def step(self):
         # Q Learning algorithm code takes place here
         action = self.policy.get(self.agent_cell_id, self.Q)
+        self.policy.update_epsilon()
         new_cell_id = self.agent_step(action)
         reward = self.get_reward(new_cell_id)
         self.Q.update(self.agent_cell_id, new_cell_id, action, reward, self.is_breadcrumb)
