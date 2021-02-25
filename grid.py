@@ -115,7 +115,7 @@ class Pacman_grid:
         new_cell_id = self.agent_step(action)
         reward = self.get_reward(new_cell_id)
         self.Q.update(self.agent_cell_id, new_cell_id, action, reward, self.is_breadcrumb)
-        self.move_agent(new_cell_id)
+        self.move_agent(new_cell_id, action)
         self.time_step += 1
         return True
 
@@ -125,7 +125,7 @@ class Pacman_grid:
         reward = self.reward_dict[state]
         return reward
 
-    def move_agent(self, new_cell_id):
+    def move_agent(self, new_cell_id, action):
         # check if the new cell location is on an obstacle
         # if it is, do not change the environment or move the agent
         i, j = self.state_position_dict[self.agent_cell_id]
@@ -139,7 +139,7 @@ class Pacman_grid:
         self.agent_cell_id = new_cell_id
         i, j = self.state_position_dict[self.agent_cell_id]
         self.env[i, j] = Constants.AGENT
-        self.print_grid()
+        self.print_grid(f"Next Step {action}")
 
     def agent_step(self, action):
         # to move the agent, get the coordinates of the current cell
