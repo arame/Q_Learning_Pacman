@@ -7,7 +7,7 @@ class Constants:
     BREADCRUMB_X = "b"
     OBSTACLE_X = "X"
     START_X = "S"
-    AGENT = 99
+    AGENT = "A"
     EMPTY_REWARD = -1
     BREADCRUMB_REWARD = 10
     OBSTACLE_REWARD = -100

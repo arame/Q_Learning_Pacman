@@ -2,26 +2,25 @@
 import random
 import numpy as np
 from hyper import Hyper
-
+from constants import Constants
 class Policy():
     
     def __init__(self):
         self.epsilon = Hyper.init_epsilon
         
-    def get(self, state, q_values):
+    def get(self, state, Q):
         # Sample an action from the policy, given a state
+        # The action returned here is the numerical representation
         is_greedy = random.random() > self.epsilon
         if is_greedy:
-            cell_idx = self.state_idx_dict[state]
-            index_action = np.argmax(q_values[state])
+            action = Q.get_action_for_max_q(state)
         else:
-            index_action = random.randint(0, 3)
+            action = random.randint(0, 3)
         
-        action = self.action_dict[index_action]
         return action
         
     def update_epsilon(self):
-        # call for each episode
+        # called for each episode
         self.epsilon *= Hyper.decay
         return self.epsilon
         

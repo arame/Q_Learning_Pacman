@@ -24,14 +24,13 @@ class Q_learn:
         # point to all the breadcrumbs as originally set
         self.q_indexes = {i:0 for i in range(self.no_cells)}
 
-    def update(self, old_state, old_action, new_state, new_action, reward, is_breadcrumb):
+    def update(self, old_state, new_state, action, reward, is_breadcrumb):
         alpha = Hyper.alpha
         gamma = Hyper.gamma
-        q_old = self.get_q_value(old_state, old_action)
-        new_index = self.q_indexes[new_state]
-        q_max = np.max(self.Q_table[new_state, new_index, :])
+        q_old = self.get_q_value(old_state, action)
+        q_max, _ = self.get_max_q(new_state)
         q_new = q_old + alpha * (reward + gamma * q_max - q_old)
-        self.set_q_value(new_state, new_action, q_new, is_breadcrumb)
+        self.set_q_value(new_state, action, q_new, is_breadcrumb)
 
     # Get and set q values in the table, making sure the q_indexes dictionary is referenced
     # before accessing or changing the Q table
@@ -51,3 +50,13 @@ class Q_learn:
             print(i, "0  |", self.Q_table[i, 0, :])
             print(i, "1  |", self.Q_table[i, 1, :])
             print("---------------")
+
+    def get_max_q(self, state):
+        index = self.q_indexes[state]
+        q_max = np.max(self.Q_table[state, index, :]) 
+        return q_max, index 
+
+    def get_action_for_max_q(self, state):
+        q_max, index = self.get_max_q(state)
+        action = self.Q_table[state, index, :].index(q_max)
+        return action

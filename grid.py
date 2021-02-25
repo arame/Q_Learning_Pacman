@@ -24,8 +24,7 @@ class Pacman_grid:
         self.env[0, :] = self.env[-1, :] = self.env[:, 0] = self.env[:, -1] = Constants.OBSTACLE
         
         # Start cell in the middle
-        start_cell_id = int((self.no_cells - 1) / 2)     # N must be an odd number
-        i, j = self.state_position_dict[start_cell_id]
+        _, i, j = self.get_start_cell_coords()
         self.env[i, j] = Constants.START
 
         # Replace empty cells with obstacles. 
@@ -49,6 +48,12 @@ class Pacman_grid:
             return np.asarray(selected_coordinates).reshape(2,)
         
         return selected_coordinates
+
+    def get_start_cell_coords(self):
+        # Start cell in the middle
+        start_cell_id = int((self.no_cells - 1) / 2)     # N must be an odd number
+        i, j = self.state_position_dict[start_cell_id]
+        return start_cell_id, i, j
 
     def setup_reward_dict(self):
         self.reward_dict = {
@@ -96,11 +101,47 @@ class Pacman_grid:
         self.Q.reset()
         # set the grid to how it was before
         self.env = np.copy(self.orig_env)
+        # put agent in the start cell of the environment
+        start_state, i, j = self.get_start_cell_coords()
+        self.env[i, j] = Constants.AGENT
+        self.agent_state = start_state
         self.time_step = 0
         self.result = ""
+        self.is_breadcrumb = False
 
     def step(self):
         # Q Learning algorithm code takes place here
         self.time_step += 1
-        #self.policy.get()
+        new_action = self.policy.get(self.agent_state, self.Q)
+        new_state = self.agent_step(new_action)
+        reward = self.get_reward(new_state)
+        self.Q.update(self.agent_state, new_state, new_action, self.is_breadcrumb)
+        self.agent_state = new_state
         return True
+
+    def get_reward(self, cell_id):
+        state = self.env[cell_id]
+        self.is_breadcrumb = state == Constants.BREADCRUMB:
+        reward = self.reward_dict[state]
+        return reward
+
+    def agent_step(self, action):
+        if action == Constants.UP:
+            i, j = self.state_position_dict[self.agent_state]
+            new_state = self.position_state_dict[i - 1, j]
+            return new_state
+
+        if action == Constants.DOWN:
+            i, j = self.state_position_dict[self.agent_state]
+            new_state = self.position_state_dict[i + 1, j]
+            return new_state
+
+        if action == Constants.LEFT:
+            i, j = self.state_position_dict[self.agent_state]
+            new_state = self.position_state_dict[i, j - 1]
+            return new_state
+
+        if action == Constants.RIGHT:
+            i, j = self.state_position_dict[self.agent_state]
+            new_state = self.position_state_dict[i, j + 1]
+            return new_state
