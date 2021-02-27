@@ -3,7 +3,7 @@ class Hyper:
     #total_episodes = 50
     total_episodes = 500
     N = 7
-    gamma = 0.99
+    gamma = 0.1
     alpha = 0.1
     init_epsilon = 1
     decay = 0.995

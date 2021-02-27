@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import seaborn as sn
 from policy import Policy
 from collections import namedtuple
 from hyper import Hyper
@@ -25,7 +26,7 @@ class Pacman_grid:
         self.position_state_dict = {v: k for k, v in self.state_position_dict.items()}
 
         self.env = np.zeros((Hyper.N, Hyper.N), dtype = np.int8)
-        self.env_counter = np.copy(self.env)
+        self.env_counter = np.zeros((Hyper.N, Hyper.N), dtype = np.int16)
         # Borders are obstacles
         self.env[0, :] = self.env[-1, :] = self.env[:, 0] = self.env[:, -1] = Constants.OBSTACLE
         
@@ -39,7 +40,6 @@ class Pacman_grid:
         # Replace empty cells with breadcrumbs. 
         self.populate_env_with_breadcrumbs()
         self.orig_env = np.copy(self.env)
-        self.print_grid("Initial Environment")
 
     def populate_env_with_obstacles(self):
         # selecting obstacles in random locations risks the possibility of
@@ -199,7 +199,7 @@ class Pacman_grid:
         for i in range(Hyper.N):
             line = ''
             for j in range(Hyper.N):
-                state_id = self.env[i,j]
+                state_id = self.orig_env[i,j]
                 line += self.dict_map_display[state_id] + " "
             line += f"    cells {lower} - {higher}"
             print(line)
@@ -215,15 +215,25 @@ class Pacman_grid:
         self.rewards_per_episode.append(self.total_reward_per_episode)
 
     def print_results(self):
+        hm_filename = f"images/hm_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
+        rw_filename = f"images/rw_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
+        ts_filename = f"images/ts_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
+        self.print_grid("Initial Environment")
+        x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
+        _ = sn.heatmap(data=self.env_counter)
+        plt.title("Number of steps per cell")
+        plt.xlabel(x_label_text)
+        plt.savefig(hm_filename)
+
         fig = plt.figure()
         fig.add_subplot(111)
-        x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
+        
         episodes = np.arange(1, len(self.timesteps_per_episode)+1)
         plt.title(f"Number of timesteps per episode for {Hyper.no_breadcrumbs} breadcrumbs")
         plt.plot(episodes, self.timesteps_per_episode)
         plt.ylabel('Steps')
         plt.xlabel(x_label_text)
-        plt.show()
+        plt.savefig(rw_filename)
 
         fig = plt.figure()
         fig.add_subplot(111)
@@ -233,5 +243,5 @@ class Pacman_grid:
         plt.plot(episodes, self.rewards_per_episode)
         plt.ylabel('Rewards')
         plt.xlabel(x_label_text)
-        plt.show()
+        plt.savefig(ts_filename)
 
