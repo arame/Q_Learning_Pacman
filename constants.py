@@ -16,3 +16,4 @@ class Constants:
     DOWN = 1
     LEFT = 2
     RIGHT = 3
+    OBSTACLE_COORDS = [(1, 1), (1, 4), (2, 2), (3,4), (4, 2), (4, 4), (5, 4)]

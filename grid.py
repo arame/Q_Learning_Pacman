@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import matplotlib.pyplot as plt
 from policy import Policy
 from collections import namedtuple
 from hyper import Hyper
@@ -8,18 +10,22 @@ from q_learn import Q_learn
 class Pacman_grid:
     def __init__(self):
         self.no_cells = Hyper.N * Hyper.N
+        self.no_episodes = 0
         self.setup_display_dict()
         self.setup_env()
         self.setup_reward_dict()
         self.setup_action_dict()
         self.Q = Q_learn(self.no_actions)
         self.policy = Policy()
+        self.timesteps_per_episode = []
+        self.rewards_per_episode = []
 
     def setup_env(self):
         self.state_position_dict = {(i * Hyper.N + j):(i, j) for i in range(Hyper.N) for j in range(Hyper.N)}
         self.position_state_dict = {v: k for k, v in self.state_position_dict.items()}
 
         self.env = np.zeros((Hyper.N, Hyper.N), dtype = np.int8)
+        self.env_counter = np.copy(self.env)
         # Borders are obstacles
         self.env[0, :] = self.env[-1, :] = self.env[:, 0] = self.env[:, -1] = Constants.OBSTACLE
         
@@ -28,14 +34,40 @@ class Pacman_grid:
         self.env[i, j] = Constants.START
 
         # Replace empty cells with obstacles. 
-        no_obstacles = Hyper.N - 2
-        self.populate_env_with_state(Constants.OBSTACLE, no_obstacles)
-
+        #no_obstacles = Hyper.N - 2
+        self.populate_env_with_obstacles()
         # Replace empty cells with breadcrumbs. 
-        self.no_breadcrumbs = (Hyper.N - 2) * 2
-        self.populate_env_with_state(Constants.BREADCRUMB, self.no_breadcrumbs)
+        self.populate_env_with_breadcrumbs()
         self.orig_env = np.copy(self.env)
         self.print_grid("Initial Environment")
+
+    def populate_env_with_obstacles(self):
+        # selecting obstacles in random locations risks the possibility of
+        # insoluble games with a breadcrumb inaccessible surrounded by obstacles.
+        # To rectify this, obstacles are set from a list of coordinates
+        for coord in Constants.OBSTACLE_COORDS:
+            self.env[coord[0], coord[1]] = Constants.OBSTACLE
+        """ midpoint = int((Hyper.N - 1) / 2)     # N is an odd number
+        left = 1, midpoint - 1
+        right = midpoint + 1, Hyper.N - 2
+        self.place_obstacle(left, left)
+        self.place_obstacle(right, left)
+        self.place_obstacle(left, right)
+        self.place_obstacle(right, right)
+        self.env[midpoint, 1] = self.env[1, midpoint] = self.env[midpoint, Hyper.N - 2] = self.env[Hyper.N - 2, midpoint] = Constants.OBSTACLE
+
+    def place_obstacle(self, coord1, coord2):
+        i = random.randint(coord1[0], coord1[1])
+        j = random.randint(coord2[0], coord2[1])
+        self.env[i, j] = Constants.OBSTACLE """
+
+    def populate_env_with_breadcrumbs(self):
+        # Keep a record of the breadcrumb coordinates
+        # This can be used to calculate the index of the Q table
+        self.populate_env_with_state(Constants.BREADCRUMB, Hyper.no_breadcrumbs)
+        breadcrumb_temp = np.nonzero(self.env == Constants.BREADCRUMB)
+        self.id_breadcrumb_coords = {i : (breadcrumb_temp[0][i], breadcrumb_temp[1][i]) for i in range(len(breadcrumb_temp[0]))}
+        self.breadcrumb_coords_id = {v: k for k, v in self.id_breadcrumb_coords.items()}
 
     def populate_env_with_state(self, state, limit):
         # This method is needed as sometimes the empty cells returned have duplicates
@@ -90,22 +122,8 @@ class Pacman_grid:
                                 Constants.START: Constants.START_X,
                                 Constants.AGENT: Constants.AGENT_X}
 
-    def print_grid(self, caption):
-        # Use characters rather than integers to make it easier to interpret the grid
-        print(caption)
-        for i in range(Hyper.N):
-            line = ''
-            for j in range(Hyper.N):
-                state_id = self.env[i,j]
-                line += self.dict_map_display[state_id] + " "
-            print(line)
-
-    def print_episode_results(self, episodes):
-        print(f"For episode {episodes}, which {self.result} after {self.time_step} steps")
-        caption = "Completed environment"
-        self.print_grid(caption)
-
     def reset(self):
+        # reset the breadcrumb indexes on the Q matrix
         self.Q.reset()
         # set the grid to how it was before
         self.env = np.copy(self.orig_env)
@@ -114,50 +132,75 @@ class Pacman_grid:
         self.env[i, j] = Constants.AGENT
         self.agent_cell_id = start_cell_id
         self.time_step = 0
-        self.result = ""
-        self.is_breadcrumb = False
+        self.total_reward_per_episode = 0
         self.done = False
         self.breadcrumb_cnt = 0
+        self.prev_state = Constants.START
+        self.no_episodes += 1
 
     def step(self):
         # Q Learning algorithm code takes place here
         action = self.policy.get(self.agent_cell_id, self.Q)
-        self.policy.update_epsilon()
-        new_cell_id = self.agent_step(action)
+        new_cell_id = self.get_cell_id_for_action(action)
         reward = self.get_reward(new_cell_id)
-        self.Q.update(self.agent_cell_id, new_cell_id, action, reward, self.is_breadcrumb)
-        self.move_agent(new_cell_id)
+        self.total_reward_per_episode += reward
+        self.Q.update(self.agent_cell_id, new_cell_id, action, reward)
+        self.agent_step(new_cell_id)
         self.time_step += 1
-        self.print_grid(f"Next Step {self.time_step}: {self.index_to_actions[action].name}")
-        if self.is_breadcrumb:
-            self.breadcrumb_cnt += 1
-            self.done = self.breadcrumb_cnt == self.no_breadcrumbs
+        #self.print_grid(f"Next Step {self.time_step}: {self.index_to_actions[action].name}")
+        if self.time_step > 1000:
+            print("Too many timesteps")
+            self.done = True
+            return self.done
 
+        """ if self.no_episodes > 400:
+            action_x = self.index_to_actions[action].name
+            caption = f"After {self.time_step} timesteps, epsilon = {self.policy.epsilon} for action {action_x}"
+            self.print_grid(caption) 
+            z = 0 """
+
+        self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
         return self.done
+
+    def check_if_cell_breadcrumb(self, cell_id):
+        i, j = self.state_position_dict[cell_id]
+        state = self.env[i, j]
+        is_breadcrumb = state == Constants.BREADCRUMB
+        return is_breadcrumb
 
     def get_reward(self, cell_id):
         i, j = self.state_position_dict[cell_id]
         state = self.env[i, j]
-        self.is_breadcrumb = state == Constants.BREADCRUMB
         reward = self.reward_dict[state]
         return reward
 
-    def move_agent(self, new_cell_id):
+    def agent_step(self, new_cell_id):
         # check if the new cell location is on an obstacle
         # if it is, do not change the environment or move the agent
         i, j = self.state_position_dict[new_cell_id]
         if self.env[i, j] == Constants.OBSTACLE:
             return
-        # When an agent moves from a cell, that cell will be empty
-        # This will overwrite the previous state,
-        # which might be Start, breadcrumb or empty
+
+        # When the Pacman agent moves from the start cell, 
+        # that cell will be empty
         i, j = self.state_position_dict[self.agent_cell_id]
+        if self.prev_state == Constants.BREADCRUMB:
+            # When the Pacman agent leaves the breadcrumb cell, 
+            # it will change state to empty in the grid
+            # and become empty in the Q table
+            self.Q.q_indexes[self.agent_cell_id] = 1
+            self.breadcrumb_cnt += 1 
+
+        # The Pacman agent leaves the current cell, which will be then empty
         self.env[i, j] = Constants.EMPTY
+        
         self.agent_cell_id = new_cell_id
         i, j = self.state_position_dict[self.agent_cell_id]
+        self.prev_state = self.env[i, j]
         self.env[i, j] = Constants.AGENT
+        self.env_counter[i, j] += 1
 
-    def agent_step(self, action):
+    def get_cell_id_for_action(self, action):
         # to move the agent, get the coordinates of the current cell
         # change one of the coordinates, and return the cell_id of the new cell
         i, j = self.state_position_dict[self.agent_cell_id]
@@ -166,3 +209,37 @@ class Pacman_grid:
         j += _action.delta_j
         new_cell_id = self.position_state_dict[i, j]
         return new_cell_id
+
+    def print_grid(self, caption):
+        # Use characters rather than integers to make it easier to interpret the grid
+        print(caption)
+        lower = 0
+        higher = Hyper.N - 1
+        for i in range(Hyper.N):
+            line = ''
+            for j in range(Hyper.N):
+                state_id = self.env[i,j]
+                line += self.dict_map_display[state_id] + " "
+            line += f"    cells {lower} - {higher}"
+            print(line)
+            lower += Hyper.N
+            higher += Hyper.N
+
+    def print_episode_results(self, episodes):
+        caption = f"Completed environment after {episodes} episodes and {self.time_step} timesteps, total reward: {self.total_reward_per_episode} with epsilon: {self.policy.epsilon}"
+        print(caption)
+
+    def save_episode_stats(self):
+        self.timesteps_per_episode.append(self.time_step)
+        self.rewards_per_episode.append(self.total_reward_per_episode)
+
+    def print_results(self):
+        fig = plt.figure()
+        fig.add_subplot(111)
+        x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
+        episodes = np.arange(1, len(self.timesteps_per_episode)+1)
+        plt.plot(episodes, self.timesteps_per_episode)
+        plt.ylabel('Steps')
+        plt.xlabel(x_label_text)
+        plt.show()
+

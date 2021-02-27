@@ -1,6 +1,6 @@
 import numpy as np
+import random
 from hyper import Hyper
-from constants import Constants
 
 class Q_learn:
     def __init__(self, no_actions):
@@ -15,49 +15,57 @@ class Q_learn:
         self.no_cells = Hyper.N * Hyper.N
         self.no_actions = no_actions
         self.q_indexes = {i:0 for i in range(self.no_cells)}
-        self.Q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.int8)
+        self.Q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.float)
 
     def reset(self):
         # By setting all the q indexes to zero, the q table will be set to
         # point to all the breadcrumbs as originally set
         self.q_indexes = {i:0 for i in range(self.no_cells)}
 
-    def update(self, old_state, new_state, action, reward, is_breadcrumb):
+    def update(self, old_cell_id, new_cell_id, action, reward):
         alpha = Hyper.alpha
         gamma = Hyper.gamma
-        q_old = self.get_q_value(old_state, action)
-        q_max, _ = self.get_max_q(new_state)
-        q_new = q_old + alpha * (reward + gamma * q_max - q_old)
-        self.set_q_value(new_state, action, q_new, is_breadcrumb)
+        q_old = self.get_q_value(old_cell_id, action)
+        q_max = self.get_max_q(new_cell_id)
+        q_val = q_old + alpha * (reward + gamma * q_max - q_old)
+        self.set_q_value(old_cell_id, action, q_val)
 
     # Get and set q values in the table, making sure the q_indexes dictionary is referenced
     # before accessing or changing the Q table
-    def get_q_value(self, state, action):
-        index = self.q_indexes[state]
-        return self.Q_table[state, index, action]
+    def get_q_value(self, cell_id, action):
+        index = self.q_indexes[cell_id]
+        q_val = self.Q_table[cell_id, index, action]
+        return q_val
 
-    def set_q_value(self, state, action, q_val, is_breadcrumb):
-        index = self.q_indexes[state]
-        self.Q_table[state, index, action] = q_val  
-        if is_breadcrumb:
-            # When the Pacman leaves the breadcrumb cell, it will change state and become empty
-            self.q_indexes[state] = 1  
+    def set_q_value(self, cell_id, action, q_val):
+        index = self.q_indexes[cell_id]
+        self.Q_table[cell_id, index, action] = q_val 
+
+    def get_max_q(self, cell_id):
+        index = self.q_indexes[cell_id]
+        q_max = np.max(self.Q_table[cell_id, index, :]) 
+        return q_max 
+
+    def get_actions_for_cell_id(self, cell_id):
+        index = self.q_indexes[cell_id]
+        actions = self.Q_table[cell_id, index, :]
+        return actions
+
+    def get_action_for_max_q(self, cell_id):
+        actions = self.get_actions_for_cell_id(cell_id)
+        # For greedy policy get the index of the maximum value
+        # in the actions array. 
+        # If more than 1 index is returned, choose 1 randomly
+        _actions = np.where(actions == np.amax(actions))
+        _action = np.random.choice(_actions[0], 1).item()
+        return _action
+
+    def print(self):
+        print("Q table indexes")
+        print(self.q_indexes)
         print("Updated Q Table")
-        print("---------------")
-        """ for i in range(self.no_cells):
-            print(i, "0  |", self.Q_table[i, 0, :])
-            print(i, "1  |", self.Q_table[i, 1, :])
-            print("---------------") """
 
-    def get_max_q(self, state):
-        index = self.q_indexes[state]
-        q_max = np.max(self.Q_table[state, index, :]) 
-        return q_max, index 
-
-    def get_action_for_max_q(self, state):
-        q_max, index = self.get_max_q(state)
-        actions = self.Q_table[state, index, :]
-        for i in range(len(actions)):
-            if actions[i] == q_max:
-                return actions[i]
-        return actions[0]
+        for i in range(self.no_cells):
+            print(f"{i}, 0  | {self.Q_table[i, 0, :]}  ///  1  | {self.Q_table[i, 1, :]}")
+            if (i + 1) % Hyper.N == 0:
+                print("-----------------------------------------------------------------------")

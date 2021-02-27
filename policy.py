@@ -8,12 +8,12 @@ class Policy():
     def __init__(self):
         self.epsilon = Hyper.init_epsilon
         
-    def get(self, state, Q):
+    def get(self, cell_id, Q):
         # Sample an action from the policy, given a state
         # The action returned here is the numerical representation
         is_greedy = random.random() > self.epsilon
         if is_greedy:
-            action = Q.get_action_for_max_q(state)
+            action = Q.get_action_for_max_q(cell_id)
         else:
             action = random.randint(0, 3)
         
@@ -21,7 +21,8 @@ class Policy():
         
     def update_epsilon(self):
         # called for each episode
-        self.epsilon *= Hyper.decay
-        print(f"Epsilon: {self.epsilon}")
+        if self.epsilon > Hyper.epsilon_threshold:
+            self.epsilon *= Hyper.decay
+
         return self.epsilon
         
