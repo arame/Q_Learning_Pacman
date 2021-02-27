@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import math
 from hyper import Hyper
 
 class Q_learn:
@@ -14,13 +15,17 @@ class Q_learn:
         # The breadcrumb to empty change is the only scenario where this happens.
         self.no_cells = Hyper.N * Hyper.N
         self.no_actions = no_actions
-        self.q_indexes = {i:0 for i in range(self.no_cells)}
-        self.Q_table = np.zeros((self.no_cells, 2, no_actions), dtype=np.float)
+        self.no_indexes = pow(2, Hyper.no_breadcrumbs)
+        self.curr_index = 0
+        #self.q_indexes = {i:0 for i in range(self.no_cells)}
+        self.Q_table = np.zeros((self.no_cells, self.no_indexes, no_actions), dtype=np.float)
 
     def reset(self):
         # By setting all the q indexes to zero, the q table will be set to
         # point to all the breadcrumbs as originally set
-        self.q_indexes = {i:0 for i in range(self.no_cells)}
+        #self.q_indexes = {i:0 for i in range(self.no_cells)}
+        # Set the current index to zero so that all the breadcrumbs are available again
+        self.curr_index = 0
 
     def update(self, old_cell_id, new_cell_id, action, reward):
         alpha = Hyper.alpha
@@ -33,22 +38,22 @@ class Q_learn:
     # Get and set q values in the table, making sure the q_indexes dictionary is referenced
     # before accessing or changing the Q table
     def get_q_value(self, cell_id, action):
-        index = self.q_indexes[cell_id]
-        q_val = self.Q_table[cell_id, index, action]
+        #index = self.q_indexes[cell_id]
+        q_val = self.Q_table[cell_id, self.curr_index, action]
         return q_val
 
     def set_q_value(self, cell_id, action, q_val):
-        index = self.q_indexes[cell_id]
-        self.Q_table[cell_id, index, action] = q_val 
+        #index = self.q_indexes[cell_id]
+        self.Q_table[cell_id, self.curr_index, action] = q_val 
 
     def get_max_q(self, cell_id):
-        index = self.q_indexes[cell_id]
-        q_max = np.max(self.Q_table[cell_id, index, :]) 
+        #index = self.q_indexes[cell_id]
+        q_max = np.max(self.Q_table[cell_id, self.curr_index, :]) 
         return q_max 
 
     def get_actions_for_cell_id(self, cell_id):
-        index = self.q_indexes[cell_id]
-        actions = self.Q_table[cell_id, index, :]
+        #index = self.q_indexes[cell_id]
+        actions = self.Q_table[cell_id, self.curr_index, :]
         return actions
 
     def get_action_for_max_q(self, cell_id):
@@ -60,12 +65,7 @@ class Q_learn:
         _action = np.random.choice(_actions[0], 1).item()
         return _action
 
-    def print(self):
-        print("Q table indexes")
-        print(self.q_indexes)
-        print("Updated Q Table")
-
-        for i in range(self.no_cells):
-            print(f"{i}, 0  | {self.Q_table[i, 0, :]}  ///  1  | {self.Q_table[i, 1, :]}")
-            if (i + 1) % Hyper.N == 0:
-                print("-----------------------------------------------------------------------")
+    def update_Q_table_index(self, breadcrumb_id):
+        # The agent is located on a breadcrumb
+        # The index of the Q table needs to change for the new state
+        self.curr_index += pow(2, breadcrumb_id)

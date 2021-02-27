@@ -20,7 +20,6 @@ def main():
         p.save_episode_stats()
 
     p.print_results()
-    p.Q.print()
     print("\n"*5)  
     print("-"*100)
     Hyper.display()

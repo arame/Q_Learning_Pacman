@@ -8,7 +8,7 @@ class Hyper:
     init_epsilon = 1
     decay = 0.995
     epsilon_threshold = 0.1
-    no_breadcrumbs = 3
+    no_breadcrumbs = 10
 
     [staticmethod]   
     def display():
