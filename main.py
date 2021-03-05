@@ -1,25 +1,28 @@
 from grid import Pacman_grid
-from constants import Constants
-from hyper import Hyper
+from config import Hyper, Constants
 
+# It all starts here
 def main():
     print("\n"*10)
     print("-"*100)
     print("Start of QLearning Basic design for Pacman")
     Hyper.display()
     print("-"*100)
-    p = Pacman_grid()
+    pacman_grid = Pacman_grid()
     for i in range(Hyper.total_episodes):
-        p.reset()
+        pacman_grid.reset()
         done = False
         while done == False:
-            done = p.step()
-        p.policy.update_epsilon()
+            if Hyper.is_ghost:
+                done = pacman_grid.ghost_step()
+            else:
+                done = pacman_grid.step()
+        pacman_grid.policy.update_epsilon()
         episodes = i + 1
-        p.print_episode_results(episodes)
-        p.save_episode_stats()
+        pacman_grid.print_episode_results(episodes)
+        pacman_grid.save_episode_stats()
 
-    p.print_results()
+    pacman_grid.print_results()
     print("\n"*5)  
     print("-"*100)
     Hyper.display()

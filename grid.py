@@ -2,11 +2,12 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import seaborn as sn
+import sys
 from policy import Policy
 from collections import namedtuple
-from hyper import Hyper
-from constants import Constants
+from config import Hyper, Constants
 from q_learn import Q_learn
+
 
 class Pacman_grid:
     def __init__(self):
@@ -24,13 +25,23 @@ class Pacman_grid:
     def setup_env(self):
         self.state_position_dict = {(i * Hyper.N + j):(i, j) for i in range(Hyper.N) for j in range(Hyper.N)}
         self.position_state_dict = {v: k for k, v in self.state_position_dict.items()}
-
         self.env = np.zeros((Hyper.N, Hyper.N), dtype = np.int8)
         self.env_counter = np.zeros((Hyper.N, Hyper.N), dtype = np.int16)
         # Borders are obstacles
         self.env[0, :] = self.env[-1, :] = self.env[:, 0] = self.env[:, -1] = Constants.OBSTACLE
-        
+        arr_temp = np.nonzero(self.env == Constants.OBSTACLE)
+        self.border_cells_coords = [(arr_temp[0][i], arr_temp[1][i]) for i in range(len(arr_temp[0]))]
+        self.env_dict = {i:[] for i in range(self.no_cells)}
+        low_lim = -1
+        high_lim = Hyper.N
+        for cell_id in range(self.no_cells):
+            if cell_id > high_lim - 1:
+                low_lim += Hyper.N
+                high_lim += Hyper.N
+            actions = self.get_actions_for_cell_id(cell_id, low_lim, high_lim)
+            self.env_dict[cell_id].append(np.array(actions))
         # Start cell in the middle
+
         _, i, j = self.get_start_cell_coords()
         self.env[i, j] = Constants.START
 
@@ -40,6 +51,25 @@ class Pacman_grid:
         # Replace empty cells with breadcrumbs. 
         self.populate_env_with_breadcrumbs()
         self.orig_env = np.copy(self.env)
+
+    def get_actions_for_cell_id(self, cell_id, low_lim, high_lim):
+        # These actions are to enable the ghost to move around the grid
+        # from one cell to the next
+        actions = []
+        up = cell_id - Hyper.N
+        if up > 0:
+            actions.append(up)
+        down = cell_id + Hyper.N
+        if down < self.no_cells:
+            actions.append(down)
+        left = cell_id - 1
+        if left > low_lim:
+            actions.append(left)
+        right = cell_id + 1
+        if right < high_lim:
+            actions.append(right)
+        return actions
+
 
     def populate_env_with_obstacles(self):
         # selecting obstacles in random locations risks the possibility of
@@ -86,20 +116,25 @@ class Pacman_grid:
             Constants.EMPTY: Constants.EMPTY_REWARD,
             Constants.BREADCRUMB: Constants.BREADCRUMB_REWARD,
             Constants.OBSTACLE: Constants.OBSTACLE_REWARD,
+            Constants.GHOST: Constants.GHOST_REWARD,
             Constants.START: Constants.EMPTY_REWARD
             }
 
     def setup_action_dict(self):
         _Action = namedtuple('Action', 'name index delta_i delta_j')
-        up = _Action('up', 0, -1, 0)    
-        down = _Action('down', 1, 1, 0)    
-        left = _Action('left', 2, 0, -1)    
-        right = _Action('right', 3, 0, 1) 
-        self.index_to_actions = {}
-        for action in [up, down, left, right]:
-            self.index_to_actions[action.index] = action
+        up = _Action('up', Constants.UP, -1, 0)    
+        down = _Action('down', Constants.DOWN, 1, 0)    
+        left = _Action('left', Constants.LEFT, 0, -1)    
+        right = _Action('right', Constants.RIGHT, 0, 1)
+        self.index_to_actions = {} 
+        if Hyper.is_ghost:
+            ghost = _Action('ghost', Constants.GHOST, 0, 0)
+            for action in [up, down, left, right, ghost]:
+                self.index_to_actions[action.index] = action
+        else:
+            for action in [up, down, left, right]:
+                self.index_to_actions[action.index] = action
 
-        self.actions_to_index = {v: k for k, v in self.index_to_actions.items()}
         self.no_actions = len(self.index_to_actions)
 
     def setup_display_dict(self):
@@ -107,6 +142,7 @@ class Pacman_grid:
                                 Constants.BREADCRUMB: Constants.BREADCRUMB_X,
                                 Constants.OBSTACLE: Constants.OBSTACLE_X,
                                 Constants.START: Constants.START_X,
+                                Constants.GHOST: Constants.GHOST_X,
                                 Constants.AGENT: Constants.AGENT_X}
 
     def reset(self):
@@ -124,8 +160,58 @@ class Pacman_grid:
         self.breadcrumb_cnt = 0
         self.prev_state = Constants.START
         self.no_episodes += 1
+        if Hyper.is_ghost:
+            self.set_ghost()
+
+    def set_ghost(self):
+        # Choose a random start location for the ghost on the border cells
+        idx = random.randint(0, len(self.border_cells_coords) - 1)
+        self.ghost_cell_coords = self.border_cells_coords[idx]
+        self.ghost_cell_id = self.position_state_dict[self.ghost_cell_coords[0], self.ghost_cell_coords[1]]
+        self.prev_ghost_cell_id = self.ghost_cell_id
+        self.prev_ghost_cell_state = Constants.OBSTACLE
+        self.env[self.ghost_cell_coords[0], self.ghost_cell_coords[1]] = Constants.GHOST
+
+    def move_ghost(self):
+        (i, j) = self.state_position_dict[self.ghost_cell_id]
+        self.env[i, j] = self.prev_ghost_cell_state
+        temp = self.env_dict[self.ghost_cell_id]
+        self.ghost_cell_id = np.random.choice(temp[0])
+        (i, j) = self.state_position_dict[self.ghost_cell_id]
+        if self.env[i, j] == Constants.AGENT:
+            self.prev_ghost_cell_state = self.prev_state
+        else:
+            self.prev_ghost_cell_state = self.env[i, j]
+        self.env[i, j] = Constants.GHOST
+
+    def get_available_actions_including_ghost(self):
+        # Check if an up, down, left, right action needs to be replaced by a ghost action
+        available_actions = []
+        agent_coords = self.state_position_dict[self.agent_cell_id]
+        ghost_coords = self.state_position_dict[self.ghost_cell_id]
+        action = self.get_action_for_state(Constants.UP, agent_coords, ghost_coords)
+        available_actions.append(action)
+        action = self.get_action_for_state(Constants.DOWN, agent_coords, ghost_coords)
+        available_actions.append(action)
+        action = self.get_action_for_state(Constants.LEFT, agent_coords, ghost_coords)
+        available_actions.append(action)
+        action = self.get_action_for_state(Constants.RIGHT, agent_coords, ghost_coords)
+        available_actions.append(action)
+        return available_actions
+
+    def get_action_for_state(self, action, agent_coords, ghost_coords):
+        coord = np.zeros(2)
+        coord[0] = agent_coords[0] + self.index_to_actions[action].delta_i
+        coord[1] = agent_coords[1] + self.index_to_actions[action].delta_j
+        if ghost_coords[0] == coord[0] and ghost_coords[1] == coord[1]:
+            # If the action moves onto a cell containing the ghost,
+            # replace the previous action with the ghost action
+            action = Constants.GHOST    
+        return action
+
 
     def step(self):
+        self.time_step += 1
         # Q Learning algorithm code takes place here
         action = self.policy.get(self.agent_cell_id, self.Q)
         new_cell_id = self.get_cell_id_for_action(action)
@@ -133,7 +219,36 @@ class Pacman_grid:
         self.total_reward_per_episode += reward
         self.Q.update(self.agent_cell_id, new_cell_id, action, reward)
         self.agent_step(new_cell_id)
+        if Hyper.show_step:
+            self.print_curr_grid(f"Environment for step {self.time_step}")
+   
+        if self.time_step > 1000:
+            print("Too many timesteps")
+            self.done = True
+            return self.done
+
+        self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
+        return self.done
+
+    def ghost_step(self):
         self.time_step += 1
+        self.move_ghost()
+        # Q Learning algorithm code takes place here
+        available_actions = self.get_available_actions_including_ghost()
+        action = self.policy.get_with_available_actions(self.agent_cell_id, self.Q, available_actions)
+        new_cell_id = self.get_cell_id_for_action(action)
+        reward = self.get_reward(new_cell_id)
+        self.total_reward_per_episode += reward
+        self.Q.update(self.agent_cell_id, new_cell_id, action, reward)
+        self.agent_step(new_cell_id)
+        if Hyper.show_step:
+            self.print_curr_grid(f"Environment for step {self.time_step}")
+   
+        if Hyper.is_ghost and self.ghost_cell_id == self.agent_cell_id:
+            print("You lost to the ghost!")
+            self.done = True
+            return self.done
+
         if self.time_step > 1000:
             print("Too many timesteps")
             self.done = True
@@ -172,26 +287,43 @@ class Pacman_grid:
             self.Q.update_Q_table_index(breadcrumb_id)
             self.breadcrumb_cnt += 1 
 
-        # The Pacman agent leaves the current cell, which will be then empty
+        # The Pacman agent leaves the current cell, which will be then always be empty
         self.env[i, j] = Constants.EMPTY
         
         self.agent_cell_id = new_cell_id
         i, j = self.state_position_dict[self.agent_cell_id]
         self.prev_state = self.env[i, j]
         self.env[i, j] = Constants.AGENT
+        # increment the number of steps counter for the current cell.
         self.env_counter[i, j] += 1
 
     def get_cell_id_for_action(self, action):
         # to move the agent, get the coordinates of the current cell
         # change one of the coordinates, and return the cell_id of the new cell
-        i, j = self.state_position_dict[self.agent_cell_id]
         _action = self.index_to_actions[action]
+        if _action.index == Constants.GHOST:
+            new_cell_id = self.ghost_cell_id
+            return new_cell_id
+
+        i, j = self.state_position_dict[self.agent_cell_id]
         i += _action.delta_i
         j += _action.delta_j
         new_cell_id = self.position_state_dict[i, j]
         return new_cell_id
 
-    def print_grid(self, caption):
+    def print_orig_grid_to_txt(self, caption):
+        # Print the original grid to the text file
+        env_filename = f"images/env_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".txt"
+        if Hyper.is_ghost:
+            env_filename = env_filename.replace("images/", "images/ghost_")
+        sys.stdout = open(env_filename,'wt')
+        self.print_grid(caption, self.orig_env)
+
+    def print_curr_grid(self, caption):
+        # Print the latest grid for diagnostic purposes
+        self.print_grid(caption, self.env)
+
+    def print_grid(self, caption, env):
         # Use characters rather than integers to make it easier to interpret the grid
         print(caption)
         lower = 0
@@ -199,7 +331,7 @@ class Pacman_grid:
         for i in range(Hyper.N):
             line = ''
             for j in range(Hyper.N):
-                state_id = self.orig_env[i,j]
+                state_id = env[i,j]
                 line += self.dict_map_display[state_id] + " "
             line += f"    cells {lower} - {higher}"
             print(line)
@@ -218,7 +350,11 @@ class Pacman_grid:
         hm_filename = f"images/hm_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         rw_filename = f"images/rw_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         ts_filename = f"images/ts_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
-        self.print_grid("Initial Environment")
+        if Hyper.is_ghost:
+            hm_filename = hm_filename.replace("images/", "images/ghost_")
+            rw_filename = rw_filename.replace("images/", "images/ghost_")
+            ts_filename = ts_filename.replace("images/", "images/ghost_")
+        self.print_orig_grid_to_txt("Initial Environment")
         x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
         _ = sn.heatmap(data=self.env_counter)
         plt.title("Number of steps per cell")
@@ -233,7 +369,7 @@ class Pacman_grid:
         plt.plot(episodes, self.timesteps_per_episode)
         plt.ylabel('Steps')
         plt.xlabel(x_label_text)
-        plt.savefig(rw_filename)
+        plt.savefig(ts_filename)
 
         fig = plt.figure()
         fig.add_subplot(111)
@@ -243,5 +379,5 @@ class Pacman_grid:
         plt.plot(episodes, self.rewards_per_episode)
         plt.ylabel('Rewards')
         plt.xlabel(x_label_text)
-        plt.savefig(ts_filename)
+        plt.savefig(rw_filename)
 
