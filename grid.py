@@ -12,6 +12,8 @@ from q_learn import Q_learn
 class Pacman_grid:
     def __init__(self):
         self.no_cells = Hyper.N * Hyper.N
+        self.results = np.zeros((2, int(Hyper.total_episodes / 100)), dtype=np.int16)
+        self.result_index = 0
         self.no_episodes = 0
         self.setup_display_dict()
         self.setup_env()
@@ -159,7 +161,10 @@ class Pacman_grid:
         self.done = False
         self.breadcrumb_cnt = 0
         self.prev_state = Constants.START
+        if self.no_episodes > 0 and self.no_episodes % 100 == 0:
+            self.result_index += 1
         self.no_episodes += 1
+
         if Hyper.is_ghost:
             self.set_ghost()
 
@@ -224,10 +229,14 @@ class Pacman_grid:
    
         if self.time_step > 1000:
             print("Too many timesteps")
+            self.results[Constants.LOSE_CELL, self.result_index] += 1
             self.done = True
             return self.done
 
         self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
+        if self.done:
+            self.results[Constants.WIN_CELL, self.result_index] += 1
+
         return self.done
 
     def ghost_step(self):
@@ -246,15 +255,20 @@ class Pacman_grid:
    
         if Hyper.is_ghost and self.ghost_cell_id == self.agent_cell_id:
             print("You lost to the ghost!")
+            self.results[Constants.LOSE_CELL, self.result_index] += 1
             self.done = True
             return self.done
 
         if self.time_step > 1000:
             print("Too many timesteps")
+            self.results[Constants.LOSE_CELL, self.result_index] += 1
             self.done = True
             return self.done
 
         self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
+        if self.done:
+            self.results[Constants.WIN_CELL, self.result_index] += 1
+
         return self.done
 
     def check_if_cell_breadcrumb(self, cell_id):
@@ -350,10 +364,12 @@ class Pacman_grid:
         hm_filename = f"images/hm_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         rw_filename = f"images/rw_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         ts_filename = f"images/ts_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
+        res_filename = f"images/res_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         if Hyper.is_ghost:
             hm_filename = hm_filename.replace("images/", "images/ghost_")
             rw_filename = rw_filename.replace("images/", "images/ghost_")
             ts_filename = ts_filename.replace("images/", "images/ghost_")
+            res_filename = res_filename.replace("images/", "images/ghost_")
         self.print_orig_grid_to_txt("Initial Environment")
         x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
         _ = sn.heatmap(data=self.env_counter)
@@ -381,3 +397,12 @@ class Pacman_grid:
         plt.xlabel(x_label_text)
         plt.savefig(rw_filename)
 
+        fig = plt.figure()
+        fig.add_subplot(111)
+        x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
+        episodes = np.arange(100, Hyper.total_episodes + 1, 100)
+        plt.title(f"Results for every 100: Wins in blue, losses in red")
+        plt.plot(episodes, self.results[Constants.WIN_CELL], "b-", episodes, self.results[Constants.LOSE_CELL], "r-")
+        plt.ylabel('Results per 100')
+        plt.xlabel(x_label_text)
+        plt.savefig(res_filename)

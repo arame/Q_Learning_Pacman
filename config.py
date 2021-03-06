@@ -46,3 +46,5 @@ class Constants:
     RIGHT = 3
     GHOST = 4
     OBSTACLE_COORDS = [(1, 1), (1, 4), (2, 2), (3,4), (4, 2), (4, 4), (5, 4)]
+    WIN_CELL = 0
+    LOSE_CELL = 1
