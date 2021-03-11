@@ -6,8 +6,8 @@ class Hyper:
     gamma = 0.99
     alpha = 0.9
     init_epsilon = 1
-    decay = 0.995
-    epsilon_threshold = 0.05
+    decay = 0.9998
+    epsilon_threshold = 0.01
     no_breadcrumbs = 10
     is_ghost = True
     show_step = False

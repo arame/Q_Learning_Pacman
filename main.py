@@ -17,7 +17,7 @@ def main():
                 done = pacman_grid.ghost_step()
             else:
                 done = pacman_grid.step()
-        pacman_grid.policy.update_epsilon()
+            pacman_grid.policy.update_epsilon()
         episodes = i + 1
         pacman_grid.print_episode_results(episodes)
         pacman_grid.save_episode_stats()
