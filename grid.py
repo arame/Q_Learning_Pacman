@@ -77,16 +77,33 @@ class Pacman_grid:
         # selecting obstacles in random locations risks the possibility of
         # insoluble games with a breadcrumb inaccessible surrounded by obstacles.
         # To rectify this, obstacles are set from a list of coordinates
-        for coord in Constants.OBSTACLE_COORDS:
+        for cell_id in Constants.OBSTACLE_CELL_IDS:
+            coord = self.state_position_dict[cell_id]
             self.env[coord[0], coord[1]] = Constants.OBSTACLE
 
     def populate_env_with_breadcrumbs(self):
+        # selecting obstacles in random locations risks the possibility of
+        # insoluble games with a breadcrumb inaccessible surrounded by obstacles.
+        # To rectify this, obstacles are set from a list of coordinates
+        no_breadcrumbs = 0
+        for cell_id in Constants.BREADCRUMB_CELL_IDS:
+            no_breadcrumbs += 1
+            if no_breadcrumbs > Hyper.no_breadcrumbs:
+                break   
+            coord = self.state_position_dict[cell_id]
+            self.env[coord[0], coord[1]] = Constants.BREADCRUMB
+
+        arr_temp = np.nonzero(self.env == Constants.BREADCRUMB)
+        self.id_breadcrumb_coords = {i : (arr_temp[0][i], arr_temp[1][i]) for i in range(len(arr_temp[0]))}
+        self.breadcrumb_coords_id = {v: k for k, v in self.id_breadcrumb_coords.items()} 
+
+    def populate_env_with_random_breadcrumbs(self):
         # Keep a record of the breadcrumb coordinates
         # This can be used to calculate the index of the Q table
         self.populate_env_with_state(Constants.BREADCRUMB, Hyper.no_breadcrumbs)
         arr_temp = np.nonzero(self.env == Constants.BREADCRUMB)
         self.id_breadcrumb_coords = {i : (arr_temp[0][i], arr_temp[1][i]) for i in range(len(arr_temp[0]))}
-        self.breadcrumb_coords_id = {v: k for k, v in self.id_breadcrumb_coords.items()}
+        self.breadcrumb_coords_id = {v: k for k, v in self.id_breadcrumb_coords.items()} 
 
     def populate_env_with_state(self, state, limit):
         # This method is needed as sometimes the empty cells returned have duplicates
@@ -260,6 +277,8 @@ class Pacman_grid:
             return self.done
 
         if self.time_step > 1000:
+            # This is a safeguard check, it shouldn't happen.
+            # It does prevent a possible infinite loop.
             print("Too many timesteps")
             self.results[Constants.LOSE_CELL, self.result_index] += 1
             self.done = True

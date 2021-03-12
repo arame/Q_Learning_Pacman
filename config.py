@@ -1,7 +1,7 @@
 
 class Hyper:
-    #total_episodes = 50
-    total_episodes = 500
+    total_episodes = 1000
+    # N is the number of cells in the side of the grid.
     N = 7
     gamma = 0.99
     alpha = 0.9
@@ -46,5 +46,8 @@ class Constants:
     RIGHT = 3
     GHOST = 4
     OBSTACLE_COORDS = [(1, 1), (1, 4), (2, 2), (3,4), (4, 2), (4, 4), (5, 4)]
+    OBSTACLE_CELL_IDS = [8, 11, 16, 25, 30, 32, 39]
+    # The breadcrumb cells selected depends on Hyper.no_breadcrumbs value
+    BREADCRUMB_CELL_IDS = [17, 12, 40, 38, 15, 23, 31, 22, 10, 19, 29, 36, 18, 9, 33, 37, 26]
     WIN_CELL = 0
     LOSE_CELL = 1

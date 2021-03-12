@@ -58,16 +58,19 @@ class Q_learn:
         q_max = -100
         for action in available_actions:
             q_val = self.Q_table[cell_id, self.state_space_index, action]
+            # Get the maximum value of the available actions
             if q_val > q_max:
                 q_max = q_val
 
         _actions = []
         for action in available_actions:
             q_val = self.Q_table[cell_id, self.state_space_index, action]
+            # find all of the available actions for the maximum value
             if q_val == q_max:
                 q_max = q_val        
                 _actions.append(action)
 
+        # Of all the available actions selected with the maximum Q value, choose 1 at random
         _action = np.random.choice(_actions, 1).item()
         return _action
 
