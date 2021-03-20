@@ -18,7 +18,7 @@ class Q_learn:
         # state space index. 
         self.no_cells = Hyper.N * Hyper.N
         self.no_actions = no_actions
-        self.no_indexes = pow(2, Hyper.no_breadcrumbs + 1)
+        self.no_indexes = pow(2, Hyper.no_breadcrumbs + 2)
         self.state_space_index = 0
         self.Q_table = np.zeros((self.no_cells, self.no_indexes, no_actions), dtype=np.float)
 

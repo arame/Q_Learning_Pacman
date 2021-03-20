@@ -12,7 +12,7 @@ from q_learn import Q_learn
 class Pacman_grid:
     def __init__(self):
         self.no_cells = Hyper.N * Hyper.N
-        self.results = np.zeros((2, int(Hyper.total_episodes / 100)), dtype=np.int16)
+        self.results = np.zeros((2, int(Hyper.total_episodes / 100) + 1), dtype=np.int16)
         self.result_index = 0
         self.no_episodes = 0
         self.setup_display_dict()
@@ -271,12 +271,13 @@ class Pacman_grid:
             self.print_curr_grid(f"Environment for step {self.time_step}")
    
         if Hyper.is_ghost and self.ghost_cell_id == self.agent_cell_id:
-            print("You lost to the ghost!")
+            if Hyper.print_episodes:
+                print("You lost to the ghost!")
             self.results[Constants.LOSE_CELL, self.result_index] += 1
             self.done = True
             return self.done
 
-        if self.time_step > 1000:
+        if self.time_step > 5000:
             # This is a safeguard check, it shouldn't happen.
             # It does prevent a possible infinite loop.
             print("Too many timesteps")

@@ -1,6 +1,6 @@
 
 class Hyper:
-    total_episodes = 1000
+    total_episodes = 500
     # N is the number of cells in the side of the grid.
     N = 7
     gamma = 0.99
@@ -11,6 +11,7 @@ class Hyper:
     no_breadcrumbs = 10
     is_ghost = True
     show_step = False
+    print_episodes = True
 
     [staticmethod]   
     def display():
