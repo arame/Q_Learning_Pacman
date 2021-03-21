@@ -424,7 +424,7 @@ class Pacman_grid:
         fig = plt.figure()
         fig.add_subplot(111)
         x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
-        plt.title(f"Results %, moving average over last 100: Wins in blue, losses in red")
+        plt.title(f"Moving Average per hundred episodes % wins/losses: Wins in blue, losses in red")
         plt.plot(episodes, self.moving_average_results[Constants.WIN_CELL], "b-", episodes, self.moving_average_results[Constants.LOSE_CELL], "r-")
         plt.ylabel('Results per 100')
         plt.xlabel(x_label_text)

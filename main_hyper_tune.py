@@ -39,6 +39,7 @@ def objective(trial):
     return reward_for_last_sample_episode
     
 study = optuna.create_study(direction="maximize", pruner=optuna.pruners.MedianPruner())
+# Note n_trials=10000. This is a lot of trials and will take a long time to run, but the results will be better
 study.optimize(objective, n_trials=10000)
 print("Number of finished trials: ", len(study.trials))
 print(study.best_params)

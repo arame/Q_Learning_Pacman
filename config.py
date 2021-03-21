@@ -2,12 +2,14 @@
 class Hyper:
     total_episodes = 500
     # N is the number of cells in the side of the grid.
+    # If you change it, remember to change the cell locations
+    # for the breadcrumbs and obstacles. It needs to be an odd number.
     N = 7
-    gamma = 0.99
-    alpha = 0.9
-    init_epsilon = 1
-    decay = 0.9998
-    epsilon_threshold = 0.01
+    gamma = 0.51
+    alpha = 0.8
+    init_epsilon = 0.95
+    decay = 0.995
+    epsilon_threshold = 0.001
     no_breadcrumbs = 10
     is_ghost = True
     show_step = False
