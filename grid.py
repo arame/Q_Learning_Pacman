@@ -12,8 +12,8 @@ from q_learn import Q_learn
 class Pacman_grid:
     def __init__(self):
         self.no_cells = Hyper.N * Hyper.N
-        self.results = np.zeros((2, int(Hyper.total_episodes / 100) + 1), dtype=np.int16)
-        self.result_index = 0
+        #self.results = np.zeros((2, int(Hyper.total_episodes / 100) + 1), dtype=np.int16)
+        self.results = np.zeros((2, Hyper.total_episodes), dtype=np.int16)
         self.no_episodes = 0
         self.setup_display_dict()
         self.setup_env()
@@ -178,8 +178,8 @@ class Pacman_grid:
         self.done = False
         self.breadcrumb_cnt = 0
         self.prev_state = Constants.START
-        if self.no_episodes > 0 and self.no_episodes % 100 == 0:
-            self.result_index += 1
+        """ if self.no_episodes > 0 and self.no_episodes % 100 == 0:
+            self.result_index += 1 """
         self.no_episodes += 1
 
         if Hyper.is_ghost:
@@ -232,7 +232,7 @@ class Pacman_grid:
         return action
 
 
-    def step(self):
+    def step(self, episode):
         self.time_step += 1
         # Q Learning algorithm code takes place here
         action = self.policy.get(self.agent_cell_id, self.Q)
@@ -246,17 +246,19 @@ class Pacman_grid:
    
         if self.time_step > 1000:
             print("Too many timesteps")
-            self.results[Constants.LOSE_CELL, self.result_index] += 1
+            #self.results[Constants.LOSE_CELL, self.result_index] += 1
+            self.results[Constants.LOSE_CELL, episode] += 1
             self.done = True
             return self.done
 
         self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
         if self.done:
-            self.results[Constants.WIN_CELL, self.result_index] += 1
+            #self.results[Constants.WIN_CELL, self.result_index] += 1
+            self.results[Constants.WIN_CELL, episode] += 1
 
         return self.done
 
-    def ghost_step(self):
+    def ghost_step(self, episode):
         self.time_step += 1
         self.move_ghost()
         # Q Learning algorithm code takes place here
@@ -273,7 +275,7 @@ class Pacman_grid:
         if Hyper.is_ghost and self.ghost_cell_id == self.agent_cell_id:
             if Hyper.print_episodes:
                 print("You lost to the ghost!")
-            self.results[Constants.LOSE_CELL, self.result_index] += 1
+            self.results[Constants.LOSE_CELL, episode] += 1
             self.done = True
             return self.done
 
@@ -281,13 +283,13 @@ class Pacman_grid:
             # This is a safeguard check, it shouldn't happen.
             # It does prevent a possible infinite loop.
             print("Too many timesteps")
-            self.results[Constants.LOSE_CELL, self.result_index] += 1
+            self.results[Constants.LOSE_CELL, episode] += 1
             self.done = True
             return self.done
 
         self.done = self.breadcrumb_cnt == Hyper.no_breadcrumbs
         if self.done:
-            self.results[Constants.WIN_CELL, self.result_index] += 1
+            self.results[Constants.WIN_CELL, episode] += 1
 
         return self.done
 
@@ -417,12 +419,32 @@ class Pacman_grid:
         plt.xlabel(x_label_text)
         plt.savefig(rw_filename)
 
+        self.moving_average_results = self.get_moving_average()
+        episodes = np.arange(Hyper.total_episodes)
         fig = plt.figure()
         fig.add_subplot(111)
         x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
-        episodes = np.arange(100, Hyper.total_episodes + 1, 100)
-        plt.title(f"Results for every 100: Wins in blue, losses in red")
-        plt.plot(episodes, self.results[Constants.WIN_CELL], "b-", episodes, self.results[Constants.LOSE_CELL], "r-")
+        plt.title(f"Results %, moving average over last 100: Wins in blue, losses in red")
+        plt.plot(episodes, self.moving_average_results[Constants.WIN_CELL], "b-", episodes, self.moving_average_results[Constants.LOSE_CELL], "r-")
         plt.ylabel('Results per 100')
         plt.xlabel(x_label_text)
         plt.savefig(res_filename)
+
+    def get_moving_average(self):
+        moving_average_results = np.zeros((2, Hyper.total_episodes), dtype=np.float)
+        limit = 100
+        for i in range(self.no_episodes):
+            episodes = i + 1
+            if i < limit:
+                win_total = sum(self.results[Constants.WIN_CELL, 0:episodes])
+                lose_total = sum(self.results[Constants.LOSE_CELL, 0:episodes])
+                moving_average_results[Constants.WIN_CELL, i] = win_total / episodes * 100
+                moving_average_results[Constants.LOSE_CELL, i] = lose_total / episodes * 100
+            else:
+                win_total = sum(self.results[Constants.WIN_CELL, (episodes - limit):i])
+                lose_total = sum(self.results[Constants.LOSE_CELL, (episodes - limit):i])
+                moving_average_results[Constants.WIN_CELL, i] = win_total / limit * 100
+                moving_average_results[Constants.LOSE_CELL, i] = lose_total / limit * 100 
+        return moving_average_results
+
+
