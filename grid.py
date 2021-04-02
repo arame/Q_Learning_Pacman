@@ -385,11 +385,13 @@ class Pacman_grid:
     def print_results(self):
         hm_filename = f"images/hm_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         rw_filename = f"images/rw_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
+        rw_ma_filename = f"images/rw_ma_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         ts_filename = f"images/ts_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         res_filename = f"images/res_lr{Hyper.alpha}_discount_rate{Hyper.gamma}_bc{Hyper.no_breadcrumbs}".replace(".","") + ".jpg"
         if Hyper.is_ghost:
             hm_filename = hm_filename.replace("images/", "images/ghost_")
             rw_filename = rw_filename.replace("images/", "images/ghost_")
+            rw_ma_filename = rw_ma_filename.replace("images/", "images/ghost_")
             ts_filename = ts_filename.replace("images/", "images/ghost_")
             res_filename = res_filename.replace("images/", "images/ghost_")
         self.print_orig_grid_to_txt("Initial Environment")
@@ -419,7 +421,18 @@ class Pacman_grid:
         plt.xlabel(x_label_text)
         plt.savefig(rw_filename)
 
-        self.moving_average_results = self.get_moving_average()
+        self.moving_average_rewards = self.get_moving_average_rewards()
+        episodes = np.arange(Hyper.total_episodes)
+        fig = plt.figure()
+        fig.add_subplot(111)
+        x_label_text = f"Episode # (learning rate = {Hyper.alpha}, discount factor = {Hyper.gamma})"
+        plt.title(f"Moving Average rewards per hundred episodes")
+        plt.plot(episodes, self.moving_average_rewards, "b-")
+        plt.ylabel('Results per 100')
+        plt.xlabel(x_label_text)
+        plt.savefig(rw_ma_filename)
+
+        self.moving_average_results = self.get_moving_average_results()
         episodes = np.arange(Hyper.total_episodes)
         fig = plt.figure()
         fig.add_subplot(111)
@@ -430,7 +443,20 @@ class Pacman_grid:
         plt.xlabel(x_label_text)
         plt.savefig(res_filename)
 
-    def get_moving_average(self):
+    def get_moving_average_rewards(self):
+        moving_average_rewards = np.zeros((Hyper.total_episodes), dtype=np.float)
+        limit = 100
+        for i in range(self.no_episodes):
+            episodes = i + 1
+            if i < limit:
+                reward_total = sum(self.rewards_per_episode[0:episodes])
+                moving_average_rewards[i] = reward_total / episodes
+            else:
+                reward_total = sum(self.rewards_per_episode[(episodes - limit):i])
+                moving_average_rewards[i] = reward_total / limit
+        return moving_average_rewards
+
+    def get_moving_average_results(self):
         moving_average_results = np.zeros((2, Hyper.total_episodes), dtype=np.float)
         limit = 100
         for i in range(self.no_episodes):

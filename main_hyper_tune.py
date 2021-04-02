@@ -22,9 +22,9 @@ def objective(trial):
         done = False
         while done == False:
             if Hyper.is_ghost:
-                done = pacman_grid.ghost_step()
+                done = pacman_grid.ghost_step(i)
             else:
-                done = pacman_grid.step()
+                done = pacman_grid.step(i)
             pacman_grid.policy.update_epsilon()
         episodes = i + 1
         if Hyper.print_episodes:

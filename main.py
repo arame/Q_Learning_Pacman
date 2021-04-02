@@ -1,7 +1,11 @@
 from grid import Pacman_grid
 from config import Hyper, Constants
-
-# It all starts here
+#
+# This main.py file runs the code once and produces graphs
+# This is the code you normally run
+# The main_hyper_tune file runs code to evaluate the optimal 
+# hyperparamters
+#
 def main():
     print("\n"*10)
     print("-"*100)
